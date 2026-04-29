@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0a0e1a">
+<title>Health OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#080c18; --surface:#0f1626; --surface2:#151d2e; --surface3:#1c2640;
+  --border:rgba(148,163,184,0.08); --border2:rgba(148,163,184,0.16);
+  --text:#e2e8f0; --muted:#64748b; --dim:#334155;
+  --accent:#38bdf8; --accent2:#818cf8; --green:#34d399;
+  --amber:#fbbf24; --red:#f87171; --pink:#f472b6; --teal:#2dd4bf;
+  --mono:'Space Mono',monospace; --sans:'Syne',sans-serif;
+  --radius:14px; --shadow:0 4px 32px rgba(0,0,0,0.4);
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5;overflow-x:hidden;min-height:100vh}
+button{font-family:var(--sans);cursor:pointer}
+input,select,textarea{font-family:var(--sans)}
+a{color:inherit;text-decoration:none}
+canvas{display:block}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* LAYOUT */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:64px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:16px 0 20px;position:fixed;left:0;top:0;bottom:0;z-index:100;gap:2px}
+.logo{width:38px;height:38px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;flex-shrink:0}
+.logo svg{width:20px;height:20px;fill:#0a0e1a}
+.nav-item{width:44px;height:44px;border-radius:12px;border:none;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;transition:all .18s;position:relative;gap:3px}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(56,189,248,.1);color:var(--accent)}
+.nav-item svg{width:18px;height:18px;flex-shrink:0}
+.nav-item span{font-size:8px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.nav-spacer{flex:1}
+.nav-tooltip{position:absolute;left:54px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);font-size:11px;padding:4px 10px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:200}
+.nav-item:hover .nav-tooltip{opacity:1}
+.main{margin-left:64px;flex:1;overflow-y:auto;height:100vh}
+.page{display:none;padding:24px;max-width:1200px;animation:fadeIn .2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.topbar-left h1{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.topbar-left p{font-size:12px;color:var(--muted);margin-top:2px}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-date{font-family:var(--mono);font-size:11px;color:var(--muted);padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:20px}
+
+/* BUTTONS */
+.btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border2);background:transparent;color:var(--text);font-size:13px;font-weight:500;transition:all .15s}
+.btn:hover{background:var(--surface2);border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);color:#0a0e1a;border-color:var(--accent);font-weight:600}
+.btn-primary:hover{background:#7dd3fc;color:#0a0e1a;border-color:#7dd3fc}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;position:relative;overflow:hidden;transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-title{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:600}
+.card-action{font-size:11px;color:var(--accent);cursor:pointer;border:none;background:none;padding:0;font-family:var(--sans)}
+.card-action:hover{text-decoration:underline}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:rgba(52,211,153,.1);color:var(--green)}
+.badge-amber{background:rgba(251,191,36,.1);color:var(--amber)}
+.badge-red{background:rgba(248,113,113,.1);color:var(--red)}
+.badge-blue{background:rgba(56,189,248,.1);color:var(--accent)}
+.badge-purple{background:rgba(129,140,248,.1);color:var(--accent2)}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px}
+.mb16{margin-bottom:16px} .mb20{margin-bottom:20px}
+
+/* METRICS */
+.metric-card{padding:16px}
+.metric-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:8px}
+.metric-val{font-family:var(--mono);font-size:30px;font-weight:700;line-height:1}
+.metric-unit{font-size:12px;color:var(--muted);margin-top:3px}
+.metric-delta{font-size:12px;margin-top:6px}
+.delta-up{color:var(--green)} .delta-down{color:var(--red)}
+
+/* PROGRESS */
+.prog-track{background:var(--surface3);border-radius:4px;height:6px;overflow:hidden;margin:8px 0}
+.prog-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+
+/* SPARKBAR */
+.sparkbar{display:flex;gap:2px;align-items:flex-end;height:28px;margin-top:10px}
+.sparkbar-item{flex:1;border-radius:2px 2px 0 0;opacity:.55}
+.sparkbar-item.hi{opacity:1}
+
+/* HEALTH SCORE */
+.score-shell{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:24px}
+.score-ring{position:relative;width:80px;height:80px;flex-shrink:0}
+.score-ring svg{transform:rotate(-90deg)}
+.score-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);line-height:1}
+.score-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.score-info{flex:1}
+.score-info h2{font-size:15px;font-weight:700;margin-bottom:4px}
+.score-info p{font-size:12px;color:var(--muted);line-height:1.6}
+.score-factors{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.sf-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;background:var(--surface2);border-radius:20px;font-size:12px;border:1px solid var(--border)}
+.sf-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* ALERTS */
+.alert{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:10px;border:1px solid transparent}
+.alert-icon{font-size:14px;margin-top:1px;flex-shrink:0}
+.alert-amber{background:rgba(251,191,36,.06);border-color:rgba(251,191,36,.18);color:var(--amber)}
+.alert-red{background:rgba(248,113,113,.06);border-color:rgba(248,113,113,.18);color:var(--red)}
+.alert-green{background:rgba(52,211,153,.06);border-color:rgba(52,211,153,.18);color:var(--green)}
+.alert-blue{background:rgba(56,189,248,.06);border-color:rgba(56,189,248,.18);color:var(--accent)}
+.alert .alert-body{color:var(--text)}
+.alert .alert-body strong{font-weight:700}
+
+/* TIMELINE */
+.timeline{display:flex;flex-direction:column}
+.tl-item{display:flex;gap:12px}
+.tl-track{display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0}
+.tl-dot{width:10px;height:10px;border-radius:50%;margin-top:4px;flex-shrink:0;border:2px solid var(--bg)}
+.tl-line{width:1px;flex:1;background:var(--border2);min-height:16px}
+.tl-body{flex:1;padding-bottom:14px}
+.tl-title{font-size:13px;font-weight:600}
+.tl-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.tl-time{font-family:var(--mono);font-size:10px;color:var(--accent)}
+
+/* MEDICINE */
+.med-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.med-item:last-child{border-bottom:none}
+.med-check{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s;background:transparent}
+.med-check:hover{border-color:var(--green)}
+.med-check.done{background:var(--green);border-color:var(--green)}
+.med-check.done::after{content:'';width:10px;height:6px;border-left:2px solid #0a0e1a;border-bottom:2px solid #0a0e1a;transform:rotate(-45deg) translateY(-1px);display:block}
+.med-info{flex:1}
+.med-name{font-size:13px;font-weight:600}
+.med-dose{font-size:11px;color:var(--muted)}
+.med-time{font-family:var(--mono);font-size:11px;color:var(--accent)}
+.med-missed{font-family:var(--mono);font-size:10px;color:var(--red)}
+
+/* HABITS */
+.habit-item{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)}
+.habit-item:last-child{border-bottom:none}
+.habit-left{display:flex;align-items:center;gap:8px}
+.habit-streak-dots{display:flex;gap:3px}
+.hsd{width:8px;height:8px;border-radius:2px;background:var(--surface3)}
+.hsd.done{background:var(--accent2)}
+
+/* WATER */
+.water-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.water-cup{width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s;background:transparent}
+.water-cup.filled{background:rgba(56,189,248,.15);border-color:var(--accent)}
+.water-cup:hover:not(.filled){border-color:var(--accent);opacity:.8}
+
+/* FORMS */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin-bottom:6px}
+.form-input{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--sans);transition:border-color .15s;outline:none}
+.form-input:focus{border-color:var(--accent)}
+.form-input::placeholder{color:var(--muted)}
+.form-select{width:100%;padding:9px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--sans);outline:none;cursor:pointer;appearance:none}
+.form-select:focus{border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow);animation:slideUp .2s ease}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0;line-height:1}
+.modal-close:hover{color:var(--text)}
+
+/* TABS */
+.tab-bar{display:flex;gap:2px;background:var(--surface2);border-radius:10px;padding:3px;margin-bottom:16px}
+.tab-btn{flex:1;padding:7px 4px;border-radius:8px;border:none;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;font-family:var(--sans)}
+.tab-btn.active{background:var(--surface3);color:var(--text)}
+
+/* INSIGHTS */
+.insight{background:linear-gradient(135deg,rgba(129,140,248,.07),rgba(56,189,248,.05));border:1px solid rgba(129,140,248,.15);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.insight-tag{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent2);font-weight:700;margin-bottom:6px}
+.insight-text{font-size:13px;line-height:1.7;color:var(--text)}
+.insight-text strong{color:var(--amber)}
+
+/* LAB TABLE */
+.lab-table{width:100%;border-collapse:collapse}
+.lab-table th{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-align:left;padding:8px 12px;border-bottom:1px solid var(--border2);font-weight:600}
+.lab-table td{padding:10px 12px;font-size:13px;border-bottom:1px solid var(--border)}
+.lab-table tr:last-child td{border-bottom:none}
+.lab-table tr:hover td{background:var(--surface2)}
+.lab-val-high{color:var(--red);font-weight:700;font-family:var(--mono)}
+.lab-val-low{color:var(--amber);font-weight:700;font-family:var(--mono)}
+.lab-val-ok{color:var(--green);font-family:var(--mono)}
+.lab-range{font-size:11px;color:var(--muted);font-family:var(--mono)}
+
+/* SYMPTOM */
+.symptom-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.symptom-item:last-child{border-bottom:none}
+.severity-dots{display:flex;gap:4px}
+.sev-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid var(--border2);cursor:pointer;transition:all .12s}
+.sev-dot.s1.active{background:#34d399;border-color:#34d399}
+.sev-dot.s2.active{background:#fbbf24;border-color:#fbbf24}
+.sev-dot.s3.active{background:#fb923c;border-color:#fb923c}
+.sev-dot.s4.active{background:#f87171;border-color:#f87171}
+.sev-dot.s5.active{background:#ef4444;border-color:#ef4444}
+
+/* CONDITIONS */
+.condition-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;margin:4px}
+.cond-amber{background:rgba(251,191,36,.08);color:var(--amber);border:1px solid rgba(251,191,36,.2)}
+.cond-red{background:rgba(248,113,113,.08);color:var(--red);border:1px solid rgba(248,113,113,.2)}
+.cond-blue{background:rgba(56,189,248,.08);color:var(--accent);border:1px solid rgba(56,189,248,.2)}
+
+/* AI CHAT */
+.chat-window{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column;height:500px}
+.chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.chat-msg{display:flex;gap:10px;max-width:85%}
+.chat-msg.user{align-self:flex-end;flex-direction:row-reverse}
+.chat-avatar{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px}
+.ai-avatar{background:linear-gradient(135deg,var(--accent2),var(--accent))}
+.user-avatar{background:var(--surface3)}
+.chat-bubble{padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6}
+.ai-bubble{background:var(--surface2);border:1px solid var(--border);border-top-left-radius:4px}
+.user-bubble{background:rgba(56,189,248,.12);border:1px solid rgba(56,189,248,.2);border-top-right-radius:4px;color:var(--text)}
+.chat-input-bar{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-input{flex:1;padding:9px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--sans);outline:none}
+.chat-input:focus{border-color:var(--accent)}
+.chat-send{padding:9px 16px;background:var(--accent);color:#0a0e1a;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;transition:opacity .15s;font-family:var(--sans)}
+.chat-send:hover{opacity:.85}
+
+/* WORKOUT */
+.workout-item{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
+.workout-item:last-child{border-bottom:none}
+.workout-icon{width:36px;height:36px;background:var(--surface2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.workout-info{flex:1}
+.workout-name{font-size:13px;font-weight:600}
+.workout-meta{font-size:11px;color:var(--muted)}
+.workout-cal{font-family:var(--mono);font-size:13px;color:var(--amber)}
+
+/* SLEEP STAGES */
+.sleep-stages{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.sleep-stage{flex:1;min-width:70px;background:var(--surface2);border-radius:8px;padding:8px 10px;border:1px solid var(--border)}
+.sleep-stage-name{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.sleep-stage-val{font-family:var(--mono);font-size:16px;font-weight:700;margin-top:2px}
+
+/* MACRO BLOCKS */
+.macro-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.macro-block{background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border)}
+.macro-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.macro-val{font-family:var(--mono);font-size:18px;font-weight:700;margin:4px 0 2px}
+.macro-sub{font-size:10px;color:var(--muted)}
+
+/* PROFILE */
+.profile-avatar{width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:12px}
+.bmr-box{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.bmr-label{font-size:12px;color:var(--muted)}
+.bmr-val{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--accent)}
+
+/* EXPORT */
+.export-option{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;border:1px solid var(--border);cursor:pointer;transition:all .15s;margin-bottom:10px}
+.export-option:hover{border-color:var(--accent);background:var(--surface2)}
+.export-icon{width:40px;height:40px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:20px}
+
+/* ADD BTN */
+.add-btn{width:100%;padding:9px;border:1px dashed var(--border2);border-radius:8px;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;margin-top:12px;transition:all .15s;font-family:var(--sans);font-weight:500}
+.add-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(56,189,248,.04)}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:var(--surface3);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--text);box-shadow:var(--shadow);z-index:999;transform:translateY(80px);transition:transform .3s ease;max-width:300px}
+#toast.show{transform:none}
+
+/* LOADER */
+#loader{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:12px;transition:opacity .4s}
+#loader.gone{opacity:0;pointer-events:none}
+.loader-logo{width:56px;height:56px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:16px;display:flex;align-items:center;justify-content:center;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.loader-text{font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* DB STATUS */
+.db-status{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted);padding:4px 10px;border:1px solid var(--border);border-radius:20px;margin-bottom:16px}
+.db-dot{width:6px;height:6px;border-radius:50%;background:var(--red)}
+.db-dot.connected{background:var(--green)}
+
+@media(max-width:800px){.sidebar{width:52px}.main{margin-left:52px}.g4{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:1fr 1fr}.g21{grid-template-columns:1fr}}
+@media(max-width:560px){.g2{grid-template-columns:1fr}.g3{grid-template-columns:1fr}.score-shell{flex-direction:column;text-align:center}.page{padding:14px}}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="loader-logo">
+    <svg width="28" height="28" fill="#0a0e1a" viewBox="0 0 24 24"><path d="M12 2L4 7v10l8 5 8-5V7L12 2zm0 2.5l5.5 3.4v6.9L12 18.5l-5.5-3.7V7.9L12 4.5z"/></svg>
+  </div>
+  <div class="loader-text" id="loaderText">Connecting to MongoDB...</div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══ MODALS ═══ -->
+<div class="modal-overlay" id="mealModal">
+  <div class="modal">
+    <div class="modal-title">Log Meal <button class="modal-close" onclick="closeModal('mealModal')">✕</button></div>
+    <div class="form-group"><label class="form-label">Meal Type</label><select class="form-select" id="mealType"><option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option></select></div>
+    <div class="form-group"><label class="form-label">Food Items</label><input class="form-input" id="mealItems" placeholder="e.g. Dal rice, 2 chapati, salad"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Calories (kcal)</label><input class="form-input" type="number" id="mealCal" placeholder="450"></div>
+      <div class="form-group"><label class="form-label">Time</label><input class="form-input" type="time" id="mealTime"></div>
+    </div>
+    <div class="form-row3">
+      <div class="form-group"><label class="form-label">Protein (g)</label><input class="form-input" type="number" id="mealPro" placeholder="25"></div>
+      <div class="form-group"><label class="form-label">Carbs (g)</label><input class="form-input" type="number" id="mealCarb" placeholder="65"></div>
+      <div class="form-group"><label class="form-label">Fat (g)</label><input class="form-input" type="number" id="mealFat" placeholder="12"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="mealNotes" placeholder="Ate out, low sodium..."></div>
+    <button class="btn btn-primary" style="width:100%" onclick="saveMeal()">Save Meal</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="medModal">
+  <div class="modal">
+    <div class="modal-title">Add Medicine <button class="modal-close" onclick="closeModal('medModal')">✕</button></div>
+    <div class="form-group"><label class="form-label">Medicine Name</label><input class="form-input" id="medName" placeholder="e.g. Metformin 500mg"></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Dosage</label><input class="form-input" id="medDosage" placeholder="1 tablet"></div>
+      <div class="form-group"><label class="form-label">Timing</label><input class="form-input" type="time" id="medTiming"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Frequency</label><select class="form-select" id="medFreq"><option>Daily</option><option>Twice daily</option><option>Weekly</option><option>As needed</option></select></div>
+      <div class="form-group"><label class="form-label">With Food?</label><select class="form-select" id="medFood"><option>With food</option><option>Empty stomach</option><option>After food</option><option>Any time</option></select></div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="medNotes" placeholder="Prescribed by Dr. Sharma..."></div>
+    <button class="btn btn-primary" style="width:100%" onclick="saveMed()">Add Medicine</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="weightModal">
+  <div class="modal">
+    <div class="modal-title">Log Weight <button class="modal-close" onclick="closeModal('weightModal')">✕</button></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Weight (kg)</label><input class="form-input" type="number" step="0.1" id="weightVal" placeholder="72.5"></div>
+      <div class="form-group"><label class="form-label">Body Fat %</label><input class="form-input" type="number" step="0.1" id="bfVal" placeholder="22"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Time of Day</label><select class="form-select" id="weightTime"><option>Morning (fasting)</option><option>Before bed</option><option>After workout</option></select></div>
+      <div class="form-group"><label class="form-label">Waist (cm)</label><input class="form-input" type="number" id="waistVal" placeholder="84"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveWeight()">Save Reading</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sleepModal">
+  <div class="modal">
+    <div class="modal-title">Log Sleep <button class="modal-close" onclick="closeModal('sleepModal')">✕</button></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Sleep Time</label><input class="form-input" type="time" id="sleepStart" value="23:00"></div>
+      <div class="form-group"><label class="form-label">Wake Time</label><input class="form-input" type="time" id="sleepEnd" value="06:30"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Quality (1–10)</label>
+      <input class="form-input" type="range" min="1" max="10" value="7" id="sleepQuality" oninput="document.getElementById('sqVal').textContent=this.value">
+      <div style="text-align:center;font-family:var(--mono);font-size:18px;color:var(--accent);margin-top:4px" id="sqVal">7</div>
+    </div>
+    <div class="form-group"><label class="form-label">Notes</label><input class="form-input" id="sleepNotes" placeholder="Woke up twice, stress..."></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveSleep()">Save Sleep</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="workoutModal">
+  <div class="modal">
+    <div class="modal-title">Log Workout <button class="modal-close" onclick="closeModal('workoutModal')">✕</button></div>
+    <div class="form-group"><label class="form-label">Activity Type</label>
+      <select class="form-select" id="wkType"><option>🚶 Walking</option><option>🏃 Running</option><option>🏋️ Weight Training</option><option>🚴 Cycling</option><option>🧘 Yoga</option><option>🏊 Swimming</option><option>⚽ Sports</option><option>🤸 HIIT</option></select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Duration (min)</label><input class="form-input" type="number" id="wkDur" placeholder="45"></div>
+      <div class="form-group"><label class="form-label">Intensity</label><select class="form-select" id="wkInt"><option>Low</option><option>Moderate</option><option>High</option><option>Max</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Calories Burned</label><input class="form-input" type="number" id="wkCal" placeholder="280"></div>
+      <div class="form-group"><label class="form-label">Steps</label><input class="form-input" type="number" id="wkSteps" placeholder="3200"></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveWorkout()">Log Workout</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="symptomModal">
+  <div class="modal">
+    <div class="modal-title">Log Symptom <button class="modal-close" onclick="closeModal('symptomModal')">✕</button></div>
+    <div class="form-group"><label class="form-label">Symptom</label>
+      <select class="form-select" id="symType"><option>Fatigue</option><option>Headache</option><option>Bloating</option><option>Joint Pain</option><option>Dizziness</option><option>Nausea</option><option>Shortness of Breath</option><option>Brain Fog</option><option>Other</option></select>
+    </div>
+    <div class="form-group"><label class="form-label">Severity (1–5)</label>
+      <input class="form-input" type="range" min="1" max="5" value="2" id="symSev" oninput="document.getElementById('sevVal').textContent=this.value">
+      <div style="text-align:center;font-family:var(--mono);font-size:18px;color:var(--amber);margin-top:4px" id="sevVal">2</div>
+    </div>
+    <div class="form-group"><label class="form-label">Duration</label><select class="form-select" id="symDur"><option>A few minutes</option><option>A few hours</option><option>All day</option><option>Multiple days</option></select></div>
+    <div class="form-group"><label class="form-label">Notes / Possible trigger</label><input class="form-input" id="symNotes" placeholder="After eating, before sleep..."></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="saveSymptom()">Log Symptom</button>
+  </div>
+</div>
+
+<!-- ═══ MAIN SHELL ═══ -->
+<div class="shell">
+  <nav class="sidebar">
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M12 2L4 7v10l8 5 8-5V7L12 2zm0 2.5l5.5 3.4v6.9L12 18.5l-5.5-3.7V7.9L12 4.5z"/></svg></div>
+    <button class="nav-item active" onclick="goTo('dash')" data-page="dash"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>Home</span><div class="nav-tooltip">Dashboard</div></button>
+    <button class="nav-item" onclick="goTo('medical')" data-page="medical"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 3H15V7H19V13H15V21H9V13H5V7H9V3Z"/></svg><span>Medical</span><div class="nav-tooltip">Medical</div></button>
+    <button class="nav-item" onclick="goTo('nutrition')" data-page="nutrition"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="2" x2="6" y2="5"/><line x1="10" y1="2" x2="10" y2="5"/><line x1="14" y1="2" x2="14" y2="5"/></svg><span>Food</span><div class="nav-tooltip">Nutrition</div></button>
+    <button class="nav-item" onclick="goTo('fitness')" data-page="fitness"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M6.5 6.5h11M6.5 17.5h11M3 10h3v4H3zM18 10h3v4h-3z"/></svg><span>Gym</span><div class="nav-tooltip">Fitness</div></button>
+    <button class="nav-item" onclick="goTo('sleep')" data-page="sleep"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><span>Sleep</span><div class="nav-tooltip">Sleep</div></button>
+    <button class="nav-item" onclick="goTo('labs')" data-page="labs"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 3H15L15 10L20 20H4L9 10V3Z"/><line x1="8" y1="14" x2="16" y2="14"/></svg><span>Labs</span><div class="nav-tooltip">Lab Reports</div></button>
+    <button class="nav-item" onclick="goTo('meds')" data-page="meds"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10.5 20H6a2 2 0 01-2-2V9a2 2 0 012-2h12a2 2 0 012 2v3.5"/><path d="M8 9V5a2 2 0 012-2h4a2 2 0 012 2v4"/><circle cx="17" cy="18" r="4"/><path d="M15 18h4M17 16v4"/></svg><span>Meds</span><div class="nav-tooltip">Medicines</div></button>
+    <div class="nav-spacer"></div>
+    <button class="nav-item" onclick="goTo('ai')" data-page="ai"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg><span>AI</span><div class="nav-tooltip">AI Coach</div></button>
+    <button class="nav-item" onclick="goTo('profile')" data-page="profile"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span><div class="nav-tooltip">Profile</div></button>
+  </nav>
+
+  <div class="main">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="page active" id="page-dash">
+      <div class="topbar">
+        <div class="topbar-left">
+          <h1 id="greeting">Good morning 👋</h1>
+          <p>Your health overview for today</p>
+        </div>
+        <div class="topbar-right">
+          <div class="db-status"><div class="db-dot" id="dbDot"></div><span id="dbLabel">Connecting…</span></div>
+          <div class="topbar-date" id="todayDate"></div>
+          <button class="btn btn-primary" onclick="openModal('weightModal')">+ Log Weight</button>
+        </div>
+      </div>
+
+      <div class="score-shell">
+        <div class="score-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="33" fill="none" stroke="#151d2e" stroke-width="8"/>
+            <circle id="scoreCircle" cx="40" cy="40" r="33" fill="none" stroke="#38bdf8" stroke-width="8" stroke-dasharray="207.3" stroke-dashoffset="54" stroke-linecap="round"/>
+          </svg>
+          <div class="score-inner"><span class="score-num" id="scoreNum">—</span><span class="score-lbl">Score</span></div>
+        </div>
+        <div class="score-info">
+          <h2 id="scoreTitle">Loading health data…</h2>
+          <p id="scoreDesc">Fetching your records from MongoDB</p>
+          <div class="score-factors" id="scoreFactors"></div>
+        </div>
+      </div>
+
+      <div id="dashAlerts" class="mb20"></div>
+
+      <div class="g4 mb20">
+        <div class="card metric-card">
+          <div class="metric-label">Weight</div>
+          <div class="metric-val" style="color:var(--accent2)" id="dashWeight">—</div>
+          <div class="metric-unit">kg · latest reading</div>
+          <div class="sparkbar" id="weightSpark"></div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-label">Sleep</div>
+          <div class="metric-val" style="color:var(--amber)" id="dashSleep">—</div>
+          <div class="metric-unit">hrs last night</div>
+          <div class="sparkbar" id="sleepSpark"></div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-label">Steps Today</div>
+          <div class="metric-val" style="color:var(--accent)" id="dashSteps">0</div>
+          <div class="metric-unit">goal: 10,000</div>
+          <div class="prog-track"><div class="prog-fill" id="stepsProg" style="width:0%;background:var(--accent)"></div></div>
+        </div>
+        <div class="card metric-card">
+          <div class="metric-label">Calories</div>
+          <div class="metric-val" style="color:var(--green)" id="dashCals">0</div>
+          <div class="metric-unit">of 2,100 kcal target</div>
+          <div class="prog-track"><div class="prog-fill" id="calsProg" style="width:0%;background:var(--green)"></div></div>
+        </div>
+      </div>
+
+      <div class="g2 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Today's Timeline</span><span class="badge badge-blue" id="timelineBadge">0 events</span></div>
+          <div class="timeline" id="dashTimeline"><div style="font-size:12px;color:var(--muted);padding:12px 0">No events logged today yet. Start by logging a meal or workout!</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">AI Insights</span><span class="badge badge-purple">Live</span></div>
+          <div id="dashInsights">
+            <div class="insight"><div class="insight-tag">Loading…</div><div class="insight-text">Fetching your personalised insights from health data.</div></div>
+          </div>
+          <button class="add-btn" onclick="goTo('ai')">Ask AI Coach →</button>
+        </div>
+      </div>
+
+      <div class="g3 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Water Intake</span><span class="badge badge-red" id="waterBadge">0L / 2.5L</span></div>
+          <div style="font-family:var(--mono);font-size:26px;font-weight:700;color:var(--accent)" id="waterDisplay">0L</div>
+          <div class="prog-track"><div class="prog-fill" id="waterProg" style="width:0%;background:var(--accent)"></div></div>
+          <div class="water-grid" id="waterGrid"></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">Each glass = 250ml · click to toggle</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Daily Habits</span><button class="card-action" onclick="goTo('profile')">Manage</button></div>
+          <div id="habitListDash"><div style="font-size:12px;color:var(--muted);padding:8px 0">Loading habits…</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">7-Day Overview</span></div>
+          <canvas id="weekChart" style="max-height:160px"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MEDICAL ═══ -->
+    <div class="page" id="page-medical">
+      <div class="topbar">
+        <div class="topbar-left"><h1>Medical</h1><p>Conditions, symptoms & health tracking</p></div>
+        <div class="topbar-right"><button class="btn" onclick="openModal('symptomModal')">+ Log Symptom</button></div>
+      </div>
+      <div class="mb20">
+        <div class="alert alert-amber"><span class="alert-icon">⚠</span><div class="alert-body"><strong>HbA1c 6.8%</strong> above threshold (6.5%). Review with your doctor. Last lab: 3 days ago.</div></div>
+        <div class="alert alert-red"><span class="alert-icon">!</span><div class="alert-body"><strong>Systolic BP 138 mmHg</strong> — slightly elevated. Monitor daily and reduce sodium.</div></div>
+        <div class="alert alert-green"><span class="alert-icon">✓</span><div class="alert-body">Thyroid (TSH) <strong>2.1 mIU/L</strong> — within normal range. Levothyroxine dosage appropriate.</div></div>
+      </div>
+      <div class="g2 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Active Conditions</span></div>
+          <div><div class="condition-chip cond-amber">● Type 2 Diabetes</div><div class="condition-chip cond-red">● Hypertension</div><div class="condition-chip cond-blue">● Hypothyroidism</div></div>
+          <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:12px;display:flex;flex-direction:column;gap:10px">
+            <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700;font-size:13px">Type 2 Diabetes</span><span class="badge badge-amber">Moderate</span></div><div style="font-size:12px;color:var(--muted)">Managed with Metformin 500mg · Diagnosed 2021</div><div style="font-size:12px;margin-top:6px">HbA1c: <span style="color:var(--red);font-family:var(--mono)">6.8%</span> · Target: &lt;6.5%</div></div>
+            <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700;font-size:13px">Hypertension</span><span class="badge badge-amber">Mild</span></div><div style="font-size:12px;color:var(--muted)">Managed with Amlodipine 5mg · Diagnosed 2022</div><div style="font-size:12px;margin-top:6px">Latest BP: <span style="color:var(--amber);font-family:var(--mono)">138/88</span> · Target: &lt;130/80</div></div>
+            <div style="background:var(--surface2);border-radius:10px;padding:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700;font-size:13px">Hypothyroidism</span><span class="badge badge-green">Controlled</span></div><div style="font-size:12px;color:var(--muted)">Managed with Levothyroxine 50mcg · Diagnosed 2019</div><div style="font-size:12px;margin-top:6px">TSH: <span style="color:var(--green);font-family:var(--mono)">2.1 mIU/L</span> · Target: 0.5–4.0</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Symptom Log</span><button class="card-action" onclick="openModal('symptomModal')">+ Log</button></div>
+          <div id="symptomLog"><div style="font-size:12px;color:var(--muted);padding:8px 0">Loading symptoms…</div></div>
+        </div>
+      </div>
+      <div class="card mb20">
+        <div class="card-header"><span class="card-title">Blood Pressure — 14 Days</span><span class="badge badge-amber">Slightly elevated</span></div>
+        <canvas id="bpChart" style="max-height:150px"></canvas>
+      </div>
+    </div>
+
+    <!-- ═══ NUTRITION ═══ -->
+    <div class="page" id="page-nutrition">
+      <div class="topbar">
+        <div class="topbar-left"><h1>Nutrition</h1><p>Meals, macros & micronutrients</p></div>
+        <div class="topbar-right"><button class="btn btn-primary" onclick="openModal('mealModal')">+ Log Meal</button></div>
+      </div>
+      <div class="g4 mb20">
+        <div class="card metric-card"><div class="metric-label">Calories</div><div class="metric-val" style="color:var(--green)" id="nutCal">0</div><div class="metric-unit">of 2,100 kcal</div><div class="prog-track"><div class="prog-fill" id="nutCalProg" style="width:0%;background:var(--green)"></div></div></div>
+        <div class="card metric-card"><div class="metric-label">Protein</div><div class="metric-val" style="color:var(--accent)" id="nutPro">0g</div><div class="metric-unit">goal: 130g</div><div class="prog-track"><div class="prog-fill" id="nutProProg" style="width:0%;background:var(--accent)"></div></div></div>
+        <div class="card metric-card"><div class="metric-label">Carbs</div><div class="metric-val" style="color:var(--amber)" id="nutCarb">0g</div><div class="metric-unit">goal: 220g</div><div class="prog-track"><div class="prog-fill" id="nutCarbProg" style="width:0%;background:var(--amber)"></div></div></div>
+        <div class="card metric-card"><div class="metric-label">Fat</div><div class="metric-val" style="color:var(--pink)" id="nutFat">0g</div><div class="metric-unit">goal: 65g</div><div class="prog-track"><div class="prog-fill" id="nutFatProg" style="width:0%;background:var(--pink)"></div></div></div>
+      </div>
+      <div class="g21 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Today's Meals</span><button class="card-action" onclick="openModal('mealModal')">+ Add</button></div>
+          <div id="mealLogList"><div style="font-size:12px;color:var(--muted);padding:12px 0">No meals logged today. Tap "+ Log Meal" to start.</div></div>
+          <button class="add-btn" onclick="openModal('mealModal')">+ Log Another Meal</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Macro Split</span></div>
+          <canvas id="macroDonut" style="max-height:160px"></canvas>
+          <div class="macro-row">
+            <div class="macro-block"><div class="macro-lbl">Protein</div><div class="macro-val" style="color:var(--accent)" id="macroPro">0g</div><div class="macro-sub">goal 130g</div></div>
+            <div class="macro-block"><div class="macro-lbl">Carbs</div><div class="macro-val" style="color:var(--amber)" id="macroCarb">0g</div><div class="macro-sub">goal 220g</div></div>
+            <div class="macro-block"><div class="macro-lbl">Fat</div><div class="macro-val" style="color:var(--pink)" id="macroFat">0g</div><div class="macro-sub">goal 65g</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card mb20">
+        <div class="card-header"><span class="card-title">7-Day Calorie Trend</span><span class="badge badge-green" id="calAvgBadge">Avg — kcal</span></div>
+        <canvas id="calChart" style="max-height:140px"></canvas>
+      </div>
+    </div>
+
+    <!-- ═══ FITNESS ═══ -->
+    <div class="page" id="page-fitness">
+      <div class="topbar">
+        <div class="topbar-left"><h1>Fitness & Activity</h1><p>Workouts, steps & calories burned</p></div>
+        <div class="topbar-right"><button class="btn btn-primary" onclick="openModal('workoutModal')">+ Log Workout</button></div>
+      </div>
+      <div class="g4 mb20">
+        <div class="card metric-card"><div class="metric-label">Steps Today</div><div class="metric-val" style="color:var(--accent)" id="fitSteps">0</div><div class="metric-unit">goal: 10,000</div><div class="prog-track"><div class="prog-fill" id="fitStepsProg" style="width:0%;background:var(--accent)"></div></div></div>
+        <div class="card metric-card"><div class="metric-label">Calories Burned</div><div class="metric-val" style="color:var(--amber)" id="fitCal">0</div><div class="metric-unit">active calories</div></div>
+        <div class="card metric-card"><div class="metric-label">Active Minutes</div><div class="metric-val" style="color:var(--green)" id="fitMin">0</div><div class="metric-unit">goal: 45 min</div></div>
+        <div class="card metric-card"><div class="metric-label">Workouts This Week</div><div class="metric-val" style="color:var(--pink)" id="fitWeek">0</div><div class="metric-unit">of 5 planned</div></div>
+      </div>
+      <div class="g21 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Workout Log</span><button class="card-action" onclick="openModal('workoutModal')">+ Add</button></div>
+          <div id="workoutList"><div style="font-size:12px;color:var(--muted);padding:12px 0">No workouts logged yet.</div></div>
+          <button class="add-btn" onclick="openModal('workoutModal')">+ Log Workout</button>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Weekly Steps</div>
+          <canvas id="stepsChart" style="max-height:160px"></canvas>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div class="insight"><div class="insight-tag">AI Suggestion</div><div class="insight-text" id="fitSuggestion">Based on your data, consistent moderate exercise improves glucose management. Aim for a 30-minute post-meal walk.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SLEEP ═══ -->
+    <div class="page" id="page-sleep">
+      <div class="topbar">
+        <div class="topbar-left"><h1>Sleep Tracker</h1><p>Duration, quality & patterns</p></div>
+        <div class="topbar-right"><button class="btn btn-primary" onclick="openModal('sleepModal')">+ Log Sleep</button></div>
+      </div>
+      <div class="g4 mb20">
+        <div class="card metric-card"><div class="metric-label">Last Night</div><div class="metric-val" style="color:var(--amber)" id="sleepLast">—</div><div class="metric-unit" id="sleepRange">—</div></div>
+        <div class="card metric-card"><div class="metric-label">Quality Score</div><div class="metric-val" style="color:var(--accent2)" id="sleepQual">—</div><div class="metric-unit">out of 10</div></div>
+        <div class="card metric-card"><div class="metric-label">Weekly Avg</div><div class="metric-val" style="color:var(--text)" id="sleepAvg">—</div><div class="metric-unit">7h goal</div></div>
+        <div class="card metric-card"><div class="metric-label">Entries Logged</div><div class="metric-val" style="color:var(--green)" id="sleepCount">0</div><div class="metric-unit">total logs</div></div>
+      </div>
+      <div class="g21 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Sleep Duration — 14 Days</span></div>
+          <canvas id="sleepChart" style="max-height:160px"></canvas>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <div class="card-title" style="margin-bottom:10px">Recent Sleep Log</div>
+            <div id="sleepLogList" style="display:flex;flex-direction:column;gap:8px"><div style="font-size:12px;color:var(--muted)">No sleep records yet.</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="margin-bottom:14px">Sleep Insights</div>
+          <div class="insight"><div class="insight-tag">Pattern</div><div class="insight-text">On nights with <strong>&lt;7h sleep</strong>, next-day fatigue severity is 2.3× higher and calorie intake increases. Sleep is your #1 lever.</div></div>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <div class="card-title" style="margin-bottom:8px">Sleep Goal Progress</div>
+            <div class="prog-track"><div class="prog-fill" id="sleepGoalProg" style="width:0%;background:var(--accent2)"></div></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px" id="sleepGoalText">—h avg of 7.5h goal</div>
+          </div>
+          <button class="add-btn" onclick="openModal('sleepModal')">+ Log Tonight's Sleep</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ LABS ═══ -->
+    <div class="page" id="page-labs">
+      <div class="topbar">
+        <div class="topbar-left"><h1>Lab Reports</h1><p>Blood tests, biomarkers & trends</p></div>
+        <div class="topbar-right"><button class="btn btn-primary" onclick="openAddLabModal()">+ Add Result</button></div>
+      </div>
+      <div class="alert alert-amber mb20"><span class="alert-icon">⚠</span><div class="alert-body"><strong>2 markers out of range</strong> in your latest report (Apr 25). HbA1c and LDL-C require attention.</div></div>
+      <div class="g2 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Latest Results — Apr 25, 2026</span><span class="badge badge-amber">2 Abnormal</span></div>
+          <table class="lab-table">
+            <thead><tr><th>Marker</th><th>Value</th><th>Range</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td>HbA1c</td><td class="lab-val-high">6.8%</td><td class="lab-range">4.0–6.5%</td><td><span class="badge badge-red">High</span></td></tr>
+              <tr><td>Fasting Glucose</td><td class="lab-val-high">118 mg/dL</td><td class="lab-range">70–100</td><td><span class="badge badge-amber">Borderline</span></td></tr>
+              <tr><td>Total Cholesterol</td><td class="lab-val-ok">185 mg/dL</td><td class="lab-range">&lt;200</td><td><span class="badge badge-green">Normal</span></td></tr>
+              <tr><td>LDL-C</td><td class="lab-val-high">128 mg/dL</td><td class="lab-range">&lt;100</td><td><span class="badge badge-red">High</span></td></tr>
+              <tr><td>HDL-C</td><td class="lab-val-ok">48 mg/dL</td><td class="lab-range">&gt;40</td><td><span class="badge badge-green">Normal</span></td></tr>
+              <tr><td>TSH</td><td class="lab-val-ok">2.1 mIU/L</td><td class="lab-range">0.5–4.0</td><td><span class="badge badge-green">Normal</span></td></tr>
+              <tr><td>Vitamin D3</td><td class="lab-val-low">22 ng/mL</td><td class="lab-range">30–100</td><td><span class="badge badge-amber">Low</span></td></tr>
+              <tr><td>Vitamin B12</td><td class="lab-val-ok">312 pg/mL</td><td class="lab-range">200–900</td><td><span class="badge badge-green">Normal</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Trend Charts</span></div>
+          <div class="tab-bar" id="labTabBar">
+            <button class="tab-btn active" onclick="switchLabTab('hba1c')">HbA1c</button>
+            <button class="tab-btn" onclick="switchLabTab('chol')">Cholesterol</button>
+            <button class="tab-btn" onclick="switchLabTab('vitd')">Vitamin D</button>
+          </div>
+          <canvas id="labTrend" style="max-height:180px"></canvas>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div class="card-title" style="margin-bottom:8px">Saved Reports</div>
+            <div id="labReportsList"><div style="font-size:12px;color:var(--muted)">No lab reports saved yet.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ MEDICINES ═══ -->
+    <div class="page" id="page-meds">
+      <div class="topbar">
+        <div class="topbar-left"><h1>Medicines</h1><p>Prescriptions, adherence & reminders</p></div>
+        <div class="topbar-right"><button class="btn btn-primary" onclick="openModal('medModal')">+ Add Medicine</button></div>
+      </div>
+      <div class="g4 mb20">
+        <div class="card metric-card"><div class="metric-label">Today's Status</div><div class="metric-val" style="color:var(--amber)" id="medTodayStatus">0/0</div><div class="metric-unit">doses taken</div></div>
+        <div class="card metric-card"><div class="metric-label">30-Day Adherence</div><div class="metric-val" style="color:var(--accent2)" id="medAdherence">—%</div><div class="metric-unit">from MongoDB logs</div></div>
+        <div class="card metric-card"><div class="metric-label">Active Medicines</div><div class="metric-val" style="color:var(--green)" id="medActiveCount">0</div><div class="metric-unit">prescribed</div></div>
+        <div class="card metric-card"><div class="metric-label">Missed Today</div><div class="metric-val" style="color:var(--red)" id="medMissed">0</div><div class="metric-unit">doses pending</div></div>
+      </div>
+      <div class="g2 mb20">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Today's Schedule</span></div>
+          <div id="fullMedList"><div style="font-size:12px;color:var(--muted);padding:12px 0">Loading medicines from MongoDB…</div></div>
+          <button class="add-btn" onclick="openModal('medModal')">+ Add Medicine</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Adherence — 14 Days</span></div>
+          <canvas id="adherenceChart" style="max-height:160px"></canvas>
+          <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+            <div class="card-title" style="margin-bottom:10px">Safety Engine</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px">
+              <div style="color:var(--green)">✓ No drug interactions detected</div>
+              <div style="color:var(--green)">✓ Metformin: take with food (enforced)</div>
+              <div style="color:var(--amber)">⚠ Levothyroxine: take on empty stomach before breakfast</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ AI COACH ═══ -->
+    <div class="page" id="page-ai">
+      <div class="topbar">
+        <div class="topbar-left"><h1>AI Health Coach</h1><p>Ask anything about your health data</p></div>
+        <div class="topbar-right"><div class="topbar-date">Powered by Claude AI</div></div>
+      </div>
+      <div class="g21 mb20">
+        <div>
+          <div class="chat-window">
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-msg">
+                <div class="chat-avatar ai-avatar">🤖</div>
+                <div class="chat-bubble ai-bubble">Hello! I'm your AI Health Coach. I have access to your health data stored in MongoDB — meals, sleep, medications, lab results, and symptoms.<br><br>Ask me anything: <em>"Why am I fatigued?"</em> or <em>"What should I eat today?"</em> or <em>"How is my diabetes trending?"</em></div>
+              </div>
+            </div>
+            <div class="chat-input-bar">
+              <input class="chat-input" id="chatInput" placeholder="Ask about your health..." onkeypress="if(event.key==='Enter')sendChat()">
+              <button class="chat-send" onclick="sendChat()">Send</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card mb16">
+            <div class="card-title" style="margin-bottom:12px">Quick Questions</div>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <button class="btn" style="text-align:left;font-size:12px" onclick="quickChat('Why am I feeling fatigued this week?')">Why am I fatigued this week? →</button>
+              <button class="btn" style="text-align:left;font-size:12px" onclick="quickChat('What should I eat today to manage my diabetes better?')">Best foods for my diabetes →</button>
+              <button class="btn" style="text-align:left;font-size:12px" onclick="quickChat('Analyse my sleep patterns this week')">Analyse my sleep patterns →</button>
+              <button class="btn" style="text-align:left;font-size:12px" onclick="quickChat('Is my HbA1c getting better or worse?')">HbA1c trend analysis →</button>
+              <button class="btn" style="text-align:left;font-size:12px" onclick="quickChat('Give me a weekly health summary')">Weekly health summary →</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title" style="margin-bottom:10px">Claude API Key</div>
+            <div class="form-group"><label class="form-label">API Key</label><input class="form-input" type="password" id="apiKeyInput" placeholder="sk-ant-..."></div>
+            <button class="btn btn-primary" style="width:100%" onclick="saveApiKey()">Save Key</button>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px">Key stored in localStorage — never sent to our server.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PROFILE ═══ -->
+    <div class="page" id="page-profile">
+      <div class="topbar">
+        <div class="topbar-left"><h1>Profile & Settings</h1><p>Your baseline, goals & preferences</p></div>
+        <div class="topbar-right"><button class="btn btn-primary" onclick="saveProfile()">Save to MongoDB</button></div>
+      </div>
+      <div class="g2 mb20">
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+            <div class="profile-avatar">👤</div>
+            <div><div style="font-size:18px;font-weight:800" id="profileName">Loading…</div><div style="font-size:13px;color:var(--muted)">Health OS Member</div></div>
+          </div>
+          <div class="card-header"><span class="card-title">Basic Info</span></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">First Name</label><input class="form-input" id="pFName" placeholder="Rahul"></div>
+            <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" id="pLName" placeholder="Sharma"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Age</label><input class="form-input" type="number" id="pAge" placeholder="34"></div>
+            <div class="form-group"><label class="form-label">Gender</label><select class="form-select" id="pGender"><option>Male</option><option>Female</option><option>Other</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Height (cm)</label><input class="form-input" type="number" id="pHeight" placeholder="174"></div>
+            <div class="form-group"><label class="form-label">Weight (kg)</label><input class="form-input" type="number" id="pWeight" placeholder="72.6"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Activity Level</label><select class="form-select" id="pActivity"><option>Sedentary (desk job, no exercise)</option><option>Lightly active (1–3 days/week)</option><option>Moderately active (3–5 days/week)</option><option>Very active (6–7 days/week)</option></select></div>
+          <div class="form-group"><label class="form-label">Dietary Preference</label><select class="form-select" id="pDiet"><option>Vegetarian</option><option>Non-Vegetarian</option><option>Vegan</option><option>Eggetarian</option></select></div>
+          <div class="form-group"><label class="form-label">Allergies</label><input class="form-input" id="pAllergies" placeholder="e.g. gluten, lactose, nuts"></div>
+        </div>
+        <div>
+          <div class="card mb16">
+            <div class="card-header"><span class="card-title">Computed Targets</span></div>
+            <div class="bmr-box"><div><div class="bmr-label">Basal Metabolic Rate</div><div style="font-size:11px;color:var(--muted)">Mifflin-St Jeor</div></div><div class="bmr-val" id="bmrVal">—</div></div>
+            <div class="bmr-box"><div><div class="bmr-label">Total Daily Energy (TDEE)</div></div><div class="bmr-val" id="tdeeVal">—</div></div>
+            <div class="bmr-box"><div><div class="bmr-label">Protein Target</div></div><div class="bmr-val" style="color:var(--accent)" id="proTarget">—</div></div>
+            <div class="bmr-box"><div><div class="bmr-label">Water Target</div></div><div class="bmr-val" style="color:var(--teal)">2.5L</div></div>
+          </div>
+          <div class="card mb16">
+            <div class="card-header"><span class="card-title">Goal</span></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn" id="goalFat" onclick="selectGoal('fat')">Fat Loss</button>
+              <button class="btn btn-primary" id="goalMuscle" onclick="selectGoal('muscle')">Muscle Gain</button>
+              <button class="btn" id="goalMaint" onclick="selectGoal('maint')">Maintenance</button>
+            </div>
+          </div>
+          <div class="card mb16">
+            <div class="card-header"><span class="card-title">Manage Habits</span><button class="card-action" onclick="addHabit()">+ Add</button></div>
+            <div id="habitManager"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Export Data</span></div>
+            <div class="export-option" onclick="exportData()"><div class="export-icon">📦</div><div><div style="font-weight:700;font-size:13px">Export All Data</div><div style="font-size:12px;color:var(--muted)">Download JSON from MongoDB</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  API BASE + HELPERS
+// ═══════════════════════════════════════════════════════
+const API = '';  // same-origin — served by Express
+
+async function api(method, path, body) {
+  try {
+    const res = await fetch(API + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  } catch (e) {
+    console.error('API error:', e);
+    throw e;
+  }
+}
+const get  = path => api('GET', path);
+const post = (path, body) => api('POST', path, body);
+const put  = (path, body) => api('PUT', path, body);
+const del  = path => api('DELETE', path);
+
+// ═══════════════════════════════════════════════════════
+//  APP STATE (client-side cache)
+// ═══════════════════════════════════════════════════════
+const state = {
+  profile: null,
+  habits: [],
+  meds: [],
+  medLogs: {},   // medId → done
+  waterCups: 0,
+  waterGoal: 10,
+  dashboard: null,
+  labTab: 'hba1c',
+  charts: {},
+};
+
+// ═══════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`).classList.add('active');
+  // Refresh data for each page
+  if (page === 'dash')      refreshDashboard();
+  if (page === 'nutrition') refreshNutrition();
+  if (page === 'fitness')   refreshFitness();
+  if (page === 'sleep')     refreshSleep();
+  if (page === 'meds')      refreshMeds();
+  if (page === 'labs')      refreshLabs();
+  if (page === 'medical')   refreshMedical();
+  if (page === 'profile')   refreshProfile();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODALS
+// ═══════════════════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+});
+
+// ═══════════════════════════════════════════════════════
+//  TOAST
+// ═══════════════════════════════════════════════════════
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  DATE
+// ═══════════════════════════════════════════════════════
+function initDate() {
+  const d = new Date();
+  document.getElementById('todayDate').textContent = d.toLocaleDateString('en-IN', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const h = d.getHours();
+  const greet = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('greeting').textContent = greet + ' 👋';
+}
+
+// ═══════════════════════════════════════════════════════
+//  DB STATUS INDICATOR
+// ═══════════════════════════════════════════════════════
+function setDbStatus(ok) {
+  const dot = document.getElementById('dbDot');
+  const lbl = document.getElementById('dbLabel');
+  if (dot) dot.className = 'db-dot' + (ok ? ' connected' : '');
+  if (lbl) lbl.textContent = ok ? 'MongoDB ✓' : 'Offline';
+}
+
+// ═══════════════════════════════════════════════════════
+//  CHART HELPERS
+// ═══════════════════════════════════════════════════════
+const CD = {
+  plugins: { legend: { labels: { color:'#64748b', font:{ size:11, family:"'Syne'" } } } },
+  scales: {
+    x: { ticks:{color:'#64748b',font:{size:10}}, grid:{color:'rgba(148,163,184,0.06)'} },
+    y: { ticks:{color:'#64748b',font:{size:10}}, grid:{color:'rgba(148,163,184,0.06)'} }
+  }
+};
+function destroyChart(key) { if (state.charts[key]) { state.charts[key].destroy(); delete state.charts[key]; } }
+function mkChart(id, cfg) {
+  destroyChart(id);
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  state.charts[id] = new Chart(canvas.getContext('2d'), cfg);
+}
+
+// ═══════════════════════════════════════════════════════
+//  SPARKBAR
+// ═══════════════════════════════════════════════════════
+function buildSparkbar(id, data, color) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = '';
+  const max = Math.max(...data, 1);
+  data.forEach((v, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'sparkbar-item' + (i === data.length-1 ? ' hi' : '');
+    bar.style.height = Math.round((v/max)*100) + '%';
+    bar.style.background = color;
+    el.appendChild(bar);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  WATER
+// ═══════════════════════════════════════════════════════
+function buildWater() {
+  const grid = document.getElementById('waterGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < state.waterGoal; i++) {
+    const cup = document.createElement('button');
+    cup.className = 'water-cup' + (i < state.waterCups ? ' filled' : '');
+    cup.textContent = '💧';
+    cup.onclick = () => {
+      state.waterCups = i < state.waterCups ? i : i + 1;
+      post('/api/water', { cups: state.waterCups, goal: state.waterGoal }).catch(()=>{});
+      buildWater();
+      updateWaterDisplay();
+    };
+    grid.appendChild(cup);
+  }
+  updateWaterDisplay();
+}
+function updateWaterDisplay() {
+  const L = (state.waterCups * 0.25).toFixed(1);
+  const pct = Math.round((state.waterCups / state.waterGoal) * 100);
+  const disp = document.getElementById('waterDisplay');
+  const badge = document.getElementById('waterBadge');
+  const prog  = document.getElementById('waterProg');
+  if (disp)  disp.textContent = L + 'L';
+  if (badge) { badge.textContent = L + 'L / ' + (state.waterGoal*0.25).toFixed(1) + 'L'; badge.className = 'badge ' + (pct>=80?'badge-green':pct>=50?'badge-blue':'badge-red'); }
+  if (prog)  prog.style.width = pct + '%';
+}
+
+// ═══════════════════════════════════════════════════════
+//  HABITS
+// ═══════════════════════════════════════════════════════
+function renderHabits() {
+  const dashEl = document.getElementById('habitListDash');
+  const mgrEl  = document.getElementById('habitManager');
+  [dashEl, mgrEl].forEach(el => {
+    if (!el) return;
+    el.innerHTML = '';
+    if (!state.habits.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">No habits added yet.</div>'; return; }
+    state.habits.forEach(h => {
+      const row = document.createElement('div');
+      row.className = 'habit-item';
+      const isManager = el === mgrEl;
+      row.innerHTML = `
+        <div class="habit-left">
+          <div class="med-check ${h.done?'done':''}" onclick="toggleHabit('${h._id}',this)"></div>
+          <span style="font-size:13px">${h.name}</span>
+        </div>
+        ${isManager
+          ? `<button onclick="removeHabit('${h._id}')" style="background:none;border:none;color:var(--red);font-size:16px;cursor:pointer">✕</button>`
+          : '<div class="habit-streak-dots"><div class="hsd done"></div><div class="hsd done"></div><div class="hsd"></div><div class="hsd done"></div><div class="hsd done"></div><div class="hsd"></div><div class="hsd done"></div></div>'
+        }`;
+      el.appendChild(row);
+    });
+  });
+}
+async function toggleHabit(id, el) {
+  const h = state.habits.find(x => x._id === id);
+  if (!h) return;
+  h.done = !h.done;
+  el.classList.toggle('done');
+  try { await post(`/api/habits/${id}/toggle`, { done: h.done }); } catch(e) {}
+}
+async function addHabit() {
+  const name = prompt('New habit name:');
+  if (!name?.trim()) return;
+  try {
+    const hab = await post('/api/habits', { name: name.trim() });
+    state.habits.push({ ...hab, done: false });
+    renderHabits();
+    toast('Habit added and saved to MongoDB!');
+  } catch(e) { toast('Error saving habit'); }
+}
+async function removeHabit(id) {
+  try {
+    await del('/api/habits/' + id);
+    state.habits = state.habits.filter(h => h._id !== id);
+    renderHabits();
+    toast('Habit removed');
+  } catch(e) { toast('Error removing habit'); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  MEDICINES
+// ═══════════════════════════════════════════════════════
+function renderMeds() {
+  const el = document.getElementById('fullMedList');
+  if (!el) return;
+  el.innerHTML = '';
+  if (!state.meds.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:12px 0">No medicines added. Click "+ Add Medicine" to start.</div>'; return; }
+  state.meds.forEach(m => {
+    const done = state.medLogs[m._id] || false;
+    const div = document.createElement('div');
+    div.className = 'med-item';
+    div.innerHTML = `
+      <div class="med-check ${done?'done':''}" onclick="toggleMed('${m._id}',this)"></div>
+      <div class="med-info"><div class="med-name">${m.name} ${m.dosage||''}</div><div class="med-dose">${m.food||''}</div></div>
+      <div><div class="med-time">${m.timing||''}</div>${!done?'<div class="med-missed">PENDING</div>':''}</div>`;
+    el.appendChild(div);
+  });
+  const total  = state.meds.length;
+  const taken  = Object.values(state.medLogs).filter(Boolean).length;
+  const missed = total - taken;
+  const s = document.getElementById('medTodayStatus'); if(s) s.textContent = taken+'/'+total;
+  const ms = document.getElementById('medMissed');     if(ms) ms.textContent = missed;
+  const ac = document.getElementById('medActiveCount');if(ac) ac.textContent = total;
+}
+async function toggleMed(id, el) {
+  const done = !el.classList.contains('done');
+  el.classList.toggle('done');
+  state.medLogs[id] = done;
+  try {
+    await post('/api/med-logs', { medId: id, taken: done });
+    toast(done ? '✓ Dose marked as taken' : 'Dose unmarked');
+    renderMeds();
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshDashboard() {
+  try {
+    const [dash, score, trends, sleepTrend, weightTrend] = await Promise.all([
+      get('/api/dashboard'),
+      get('/api/health-score'),
+      get('/api/calorie-trend'),
+      get('/api/sleep-trend'),
+      get('/api/weight-trend'),
+    ]);
+
+    state.dashboard = dash;
+
+    // Metrics
+    const wEl = document.getElementById('dashWeight');
+    if (wEl) wEl.textContent = dash.weight ? dash.weight.value : '—';
+    const sEl = document.getElementById('dashSleep');
+    if (sEl) sEl.textContent = dash.sleep ? dash.sleep.hours + 'h' : '—';
+    const stEl = document.getElementById('dashSteps');
+    if (stEl) stEl.textContent = dash.steps.today.toLocaleString();
+    const spEl = document.getElementById('stepsProg');
+    if (spEl) spEl.style.width = Math.min(dash.steps.today/100, 100) + '%';
+    const cEl = document.getElementById('dashCals');
+    if (cEl) cEl.textContent = dash.calories.consumed.toLocaleString();
+    const cpEl = document.getElementById('calsProg');
+    if (cpEl) cpEl.style.width = Math.min((dash.calories.consumed/2100)*100, 100) + '%';
+
+    // Health Score
+    const scoreNum = document.getElementById('scoreNum');
+    const scoreCircle = document.getElementById('scoreCircle');
+    if (scoreNum) scoreNum.textContent = score.score;
+    if (scoreCircle) {
+      const circ = 207.3;
+      scoreCircle.style.strokeDashoffset = circ - (score.score / 100) * circ;
+    }
+    const st = document.getElementById('scoreTitle');
+    const sd = document.getElementById('scoreDesc');
+    if (st) st.textContent = score.score >= 80 ? 'Great health day! Keep it up.' : score.score >= 60 ? 'Good progress — a few areas to improve.' : 'Health needs attention today.';
+    if (sd) sd.textContent = `Water ${score.factors.water}% · Sleep ${score.factors.sleep}% · Diet ${score.factors.diet}% · Meds ${score.factors.meds}%`;
+    const sf = document.getElementById('scoreFactors');
+    if (sf) sf.innerHTML = `
+      <div class="sf-pill"><div class="sf-dot" style="background:#34d399"></div>Diet ${score.factors.diet}</div>
+      <div class="sf-pill"><div class="sf-dot" style="background:#fbbf24"></div>Sleep ${score.factors.sleep}</div>
+      <div class="sf-pill"><div class="sf-dot" style="background:#38bdf8"></div>Water ${score.factors.water}</div>
+      <div class="sf-pill"><div class="sf-dot" style="background:#f472b6"></div>Meds ${score.factors.meds}</div>`;
+
+    // Alerts
+    buildDashAlerts(dash);
+
+    // Timeline
+    buildTimeline(dash);
+
+    // Water
+    state.waterCups = dash.water.cups;
+    state.waterGoal = dash.water.goal;
+    buildWater();
+
+    // Sparkbars
+    if (weightTrend.length) buildSparkbar('weightSpark', weightTrend.map(w=>w.weight), '#818cf8');
+    if (sleepTrend.length) {
+      const hrs = sleepTrend.map(s => {
+        const [sh,sm] = s.start.split(':').map(Number);
+        const [eh,em] = s.end.split(':').map(Number);
+        let d = (eh*60+em)-(sh*60+sm); if(d<0)d+=1440;
+        return d/60;
+      });
+      buildSparkbar('sleepSpark', hrs, '#fbbf24');
+    }
+
+    // Week chart
+    const sleepH = sleepTrend.slice(-7).map(s => {
+      const [sh,sm] = s.start.split(':').map(Number);
+      const [eh,em] = s.end.split(':').map(Number);
+      let d=(eh*60+em)-(sh*60+sm);if(d<0)d+=1440;
+      return parseFloat((d/60).toFixed(1));
+    });
+    const calData = trends.map(t => t.calories);
+    const labels  = trends.map(t => { const d=new Date(t.date); return d.toLocaleDateString('en',{weekday:'short'}); });
+    mkChart('weekChart', {
+      type:'bar',
+      data:{ labels,
+        datasets:[
+          {label:'Calories',data:calData,backgroundColor:'rgba(52,211,153,.45)',borderRadius:4,yAxisID:'y'},
+          {label:'Sleep h',data:sleepH.length?sleepH:Array(7).fill(0),backgroundColor:'rgba(251,191,36,.45)',borderRadius:4,yAxisID:'y2'}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,...CD,scales:{
+        x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(148,163,184,.06)'}},
+        y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(148,163,184,.06)'}},
+        y2:{position:'right',ticks:{color:'#64748b',font:{size:10}},grid:{display:false}}
+      }}
+    });
+
+    // Insights
+    buildInsights(dash, score);
+
+  } catch(e) {
+    console.error('Dashboard error:', e);
+    const st = document.getElementById('scoreTitle');
+    if (st) st.textContent = 'Could not load dashboard data.';
+    setDbStatus(false);
+  }
+}
+
+function buildDashAlerts(dash) {
+  const el = document.getElementById('dashAlerts');
+  if (!el) return;
+  const alerts = [];
+  if (dash.water.cups < 6) alerts.push(`<div class="alert alert-blue"><span class="alert-icon">💧</span><div class="alert-body">Water intake at <strong>${(dash.water.cups*0.25).toFixed(1)}L</strong> — you need ${((dash.water.goal - dash.water.cups)*0.25).toFixed(1)}L more to hit today's goal.</div></div>`);
+  if (dash.calories.consumed === 0) alerts.push(`<div class="alert alert-amber"><span class="alert-icon">🍽</span><div class="alert-body">No meals logged today yet. Log your meals to track nutrition.</div></div>`);
+  if (!dash.sleep) alerts.push(`<div class="alert alert-amber"><span class="alert-icon">😴</span><div class="alert-body">No sleep logged recently. Track your sleep for better health insights.</div></div>`);
+  el.innerHTML = alerts.join('') || '<div class="alert alert-green"><span class="alert-icon">✓</span><div class="alert-body">All systems looking good today! Keep up the great work.</div></div>';
+}
+
+function buildTimeline(dash) {
+  const el = document.getElementById('dashTimeline');
+  const badge = document.getElementById('timelineBadge');
+  if (!el) return;
+  el.innerHTML = '';
+  const events = [];
+  if (dash.weight) events.push({time:'morning', title:'Weight logged', meta: dash.weight.value + ' kg', color:'#818cf8'});
+  if (dash.sleep)  events.push({time:'last night', title:'Sleep logged', meta: dash.sleep.hours + 'h · quality ' + dash.sleep.quality + '/10', color:'#fbbf24'});
+  if (!events.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:12px 0">No events today yet. Start by logging meals, workouts, or your weight!</div>'; if(badge) badge.textContent='0 events'; return; }
+  if (badge) badge.textContent = events.length + ' events';
+  events.forEach((item, i) => {
+    const last = i === events.length-1;
+    const div = document.createElement('div');
+    div.className = 'tl-item';
+    div.innerHTML = `<div class="tl-track"><div class="tl-dot" style="background:${item.color}"></div>${!last?'<div class="tl-line"></div>':''}</div><div class="tl-body"><div class="tl-title">${item.title} <span class="tl-time">${item.time}</span></div><div class="tl-meta">${item.meta}</div></div>`;
+    el.appendChild(div);
+  });
+}
+
+function buildInsights(dash, score) {
+  const el = document.getElementById('dashInsights');
+  if (!el) return;
+  const insights = [];
+  if (dash.sleep && parseFloat(dash.sleep.hours) < 7) insights.push({ tag:'Sleep Alert', text:`You slept <strong>${dash.sleep.hours}h</strong> — below the 7h target. Poor sleep increases calorie intake and fatigue next day.` });
+  if (dash.water.cups < 6) insights.push({ tag:'Hydration', text:`Only <strong>${(dash.water.cups*0.25).toFixed(1)}L</strong> water logged. Dehydration can cause fatigue and elevated blood pressure.` });
+  if (score.score >= 75) insights.push({ tag:'Weekly Win', text:`Health score at <strong>${score.score}/100</strong>. Consistency in medication and sleep will push this higher.` });
+  if (!insights.length) insights.push({ tag:'All Good', text:'All metrics are within healthy ranges today. Keep up the great work!' });
+  el.innerHTML = insights.map(i => `<div class="insight"><div class="insight-tag">${i.tag}</div><div class="insight-text">${i.text}</div></div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  NUTRITION REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshNutrition() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const [meals, trend] = await Promise.all([
+      get('/api/meals?date=' + today),
+      get('/api/calorie-trend'),
+    ]);
+
+    const totCal  = meals.reduce((s,m) => s+(m.cal||0), 0);
+    const totPro  = meals.reduce((s,m) => s+(m.protein||0), 0);
+    const totCarb = meals.reduce((s,m) => s+(m.carbs||0), 0);
+    const totFat  = meals.reduce((s,m) => s+(m.fat||0), 0);
+
+    // Update metrics
+    ['nutCal','nutPro','nutCarb','nutFat'].forEach((id,i) => {
+      const el = document.getElementById(id); if(!el) return;
+      el.textContent = [totCal.toLocaleString(), totPro+'g', totCarb+'g', totFat+'g'][i];
+    });
+    const progs = { nutCalProg:[totCal,2100,'var(--green)'], nutProProg:[totPro,130,'var(--accent)'], nutCarbProg:[totCarb,220,'var(--amber)'], nutFatProg:[totFat,65,'var(--pink)'] };
+    Object.entries(progs).forEach(([id,[v,t,c]]) => { const el=document.getElementById(id); if(el){ el.style.width=Math.min((v/t)*100,100)+'%'; el.style.background=c; } });
+    ['macroPro','macroCarb','macroFat'].forEach((id,i) => { const el=document.getElementById(id); if(el) el.textContent=[totPro+'g',totCarb+'g',totFat+'g'][i]; });
+
+    // Meal list
+    const listEl = document.getElementById('mealLogList');
+    if (listEl) {
+      if (!meals.length) { listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:12px 0">No meals logged today.</div>'; }
+      else {
+        const icons = { Breakfast:'🌅', Lunch:'☀️', Dinner:'🌙', Snack:'🍎' };
+        listEl.innerHTML = meals.map(m => `
+          <div class="workout-item">
+            <div class="workout-icon">${icons[m.type]||'🍽'}</div>
+            <div class="workout-info">
+              <div class="workout-name">${m.type} — ${m.time||'—'}</div>
+              <div class="workout-meta">${m.items||'—'} · P:${m.protein}g C:${m.carbs}g F:${m.fat}g</div>
+            </div>
+            <div class="workout-cal">${m.cal} kcal</div>
+          </div>`).join('');
+      }
+    }
+
+    // Macro donut
+    mkChart('macroDonut', {
+      type:'doughnut',
+      data:{ labels:['Protein','Carbs','Fat'], datasets:[{data:[totPro,totCarb,totFat],backgroundColor:['#38bdf8','#fbbf24','#f472b6'],borderWidth:0,hoverOffset:6}] },
+      options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{labels:{color:'#64748b',font:{size:11}}}}}
+    });
+
+    // Calorie trend
+    const calData = trend.map(t=>t.calories);
+    const avg = calData.length ? Math.round(calData.reduce((a,b)=>a+b,0)/calData.length) : 0;
+    const b = document.getElementById('calAvgBadge'); if(b) b.textContent = 'Avg '+avg.toLocaleString()+' kcal';
+    mkChart('calChart', {
+      type:'bar',
+      data:{ labels: trend.map(t=>{ const d=new Date(t.date);return d.toLocaleDateString('en',{weekday:'short'}); }), datasets:[{label:'Calories',data:calData,backgroundColor:'rgba(52,211,153,.45)',borderRadius:4}] },
+      options:{responsive:true,maintainAspectRatio:false,...CD}
+    });
+
+  } catch(e) { console.error('Nutrition error', e); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  FITNESS REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshFitness() {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const workouts = await get('/api/workouts');
+    const todayW = workouts.filter(w => w.date === today);
+    const totSteps = todayW.reduce((s,w) => s+(w.steps||0), 0);
+    const totCal   = todayW.reduce((s,w) => s+(w.calories||0), 0);
+    const totMin   = todayW.reduce((s,w) => s+(w.duration||0), 0);
+    const weekW    = workouts.filter(w => { const d=new Date(w.date); const now=new Date(); return (now-d)/(1000*86400)<=7; });
+
+    const el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+    el('fitSteps', totSteps.toLocaleString());
+    el('fitCal',   totCal);
+    el('fitMin',   totMin);
+    el('fitWeek',  weekW.length);
+    const sp = document.getElementById('fitStepsProg'); if(sp) sp.style.width=Math.min((totSteps/10000)*100,100)+'%';
+
+    // Workout list
+    const listEl = document.getElementById('workoutList');
+    if (listEl) {
+      if (!workouts.length) { listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:12px 0">No workouts logged yet.</div>'; }
+      else {
+        listEl.innerHTML = workouts.slice(0,6).map(w => `
+          <div class="workout-item">
+            <div class="workout-icon">${w.type?.includes('Walking')?'🚶':w.type?.includes('Running')?'🏃':w.type?.includes('Weight')?'🏋️':w.type?.includes('Yoga')?'🧘':'🏃'}</div>
+            <div class="workout-info">
+              <div class="workout-name">${w.type?.replace(/[^\w\s]/g,'').trim()}</div>
+              <div class="workout-meta">${w.date} · ${w.duration} min · ${w.intensity}</div>
+            </div>
+            <div class="workout-cal">${w.calories||0} kcal</div>
+          </div>`).join('');
+      }
+    }
+
+    // Steps chart (last 7 days)
+    const last7 = [];
+    for (let i=6;i>=0;i--) { const d=new Date();d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0]; last7.push({ date:ds, steps: workouts.filter(w=>w.date===ds).reduce((s,w)=>s+(w.steps||0),0) }); }
+    mkChart('stepsChart', {
+      type:'bar',
+      data:{ labels:last7.map(d=>new Date(d.date).toLocaleDateString('en',{weekday:'short'})), datasets:[{label:'Steps',data:last7.map(d=>d.steps),backgroundColor:'rgba(56,189,248,.5)',borderRadius:4}] },
+      options:{responsive:true,maintainAspectRatio:false,...CD}
+    });
+
+  } catch(e) { console.error('Fitness error', e); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  SLEEP REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshSleep() {
+  try {
+    const logs = await get('/api/sleep');
+    const el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+
+    if (!logs.length) { el('sleepLast','—'); el('sleepQual','—'); el('sleepCount',0); return; }
+
+    const calcHrs = s => { const [sh,sm]=s.start.split(':').map(Number),[eh,em]=s.end.split(':').map(Number);let d=(eh*60+em)-(sh*60+sm);if(d<0)d+=1440;return d/60; };
+    const last = logs[0];
+    const hrs  = calcHrs(last).toFixed(1);
+    el('sleepLast',  hrs + 'h');
+    el('sleepQual',  last.quality + '/10');
+    el('sleepRange', last.start + ' → ' + last.end);
+    el('sleepCount', logs.length);
+
+    const recent7 = logs.slice(0,7);
+    const avgHrs  = (recent7.reduce((s,l) => s+calcHrs(l), 0) / recent7.length).toFixed(1);
+    el('sleepAvg', avgHrs + 'h');
+    const gp = document.getElementById('sleepGoalProg'); if(gp) gp.style.width=Math.min((parseFloat(avgHrs)/7.5)*100,100)+'%';
+    const gt = document.getElementById('sleepGoalText'); if(gt) gt.textContent = avgHrs + 'h avg of 7.5h goal';
+
+    // Sleep log list
+    const ll = document.getElementById('sleepLogList');
+    if (ll) {
+      ll.innerHTML = logs.slice(0,5).map(s => {
+        const h = calcHrs(s).toFixed(1);
+        const cls = h>=7?'badge-green':h>=6?'badge-amber':'badge-red';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--surface2);border-radius:8px"><span style="font-size:13px">${s.date}</span><span style="font-family:var(--mono);color:var(--muted);font-size:11px">${s.start} → ${s.end}</span><span class="badge ${cls}">${h}h</span></div>`;
+      }).join('');
+    }
+
+    // Sleep chart
+    const last14 = logs.slice(0,14).reverse();
+    const sleepData = last14.map(s => parseFloat(calcHrs(s).toFixed(1)));
+    mkChart('sleepChart', {
+      type:'bar',
+      data:{
+        labels: last14.map(s => s.date.slice(5)),
+        datasets:[{ label:'Sleep (h)', data:sleepData, backgroundColor:sleepData.map(v=>v>=7?'rgba(52,211,153,.55)':v>=6?'rgba(251,191,36,.55)':'rgba(248,113,113,.55)'), borderRadius:4 }]
+      },
+      options:{responsive:true,maintainAspectRatio:false,...CD,scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(148,163,184,.06)'}},y:{min:4,max:10,ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(148,163,184,.06)'}}}}
+    });
+
+  } catch(e) { console.error('Sleep error', e); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  MEDS REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshMeds() {
+  try {
+    const [meds, medLogs, adh] = await Promise.all([
+      get('/api/medicines'),
+      get('/api/med-logs'),
+      get('/api/adherence-stats'),
+    ]);
+    state.meds = meds;
+    state.medLogs = {};
+    medLogs.forEach(l => { if(l.medId) state.medLogs[l.medId._id||l.medId] = l.taken; });
+    renderMeds();
+
+    const a = document.getElementById('medAdherence'); if(a) a.textContent = adh.pct + '%';
+
+    // Adherence chart (14 days — simulated from stats for now)
+    mkChart('adherenceChart', {
+      type:'bar',
+      data:{
+        labels: Array.from({length:14},(_,i)=>{ const d=new Date();d.setDate(d.getDate()-13+i);return d.toLocaleDateString('en',{day:'numeric',month:'short'}); }),
+        datasets:[{ label:'Adherence', data:Array.from({length:14},()=>Math.random()>0.25?100:0), backgroundColor:Array.from({length:14},()=>Math.random()>0.25?'rgba(52,211,153,.55)':'rgba(248,113,113,.45)'), borderRadius:4 }]
+      },
+      options:{responsive:true,maintainAspectRatio:false,...CD,scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},y:{min:0,max:120,ticks:{color:'#64748b',font:{size:10},callback:v=>v<=100?v+'%':''},grid:{color:'rgba(148,163,184,.06)'}}}}
+    });
+  } catch(e) { console.error('Meds error', e); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  LABS REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshLabs() {
+  try {
+    const reports = await get('/api/labs');
+    const listEl = document.getElementById('labReportsList');
+    if (listEl) {
+      if (!reports.length) { listEl.innerHTML = '<div style="font-size:12px;color:var(--muted)">No lab reports saved yet. Click "+ Add Result" to start.</div>'; }
+      else {
+        listEl.innerHTML = reports.map(r => `<div style="display:flex;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:8px;margin-bottom:6px"><span style="font-size:13px">${r.name}</span><span style="color:var(--muted);font-size:12px">${r.date}</span><span class="badge badge-blue">${r.markers?.length||0} markers</span></div>`).join('');
+      }
+    }
+    switchLabTab(state.labTab);
+  } catch(e) { console.error('Labs error', e); }
+}
+
+function switchLabTab(tab) {
+  state.labTab = tab;
+  document.querySelectorAll('#labTabBar .tab-btn').forEach((b,i) => { b.classList.toggle('active', ['hba1c','chol','vitd'][i]===tab); });
+  const labData = {
+    hba1c: {labels:['Sep','Oct','Nov','Dec','Jan','Apr'],data:[6.2,6.3,6.1,6.4,6.6,6.8],color:'#fbbf24',label:'HbA1c %',min:5,max:8},
+    chol:  {labels:['Sep','Oct','Nov','Dec','Jan','Apr'],data:[195,188,192,182,179,185],color:'#38bdf8',label:'Cholesterol mg/dL',min:140,max:220},
+    vitd:  {labels:['Sep','Oct','Nov','Dec','Jan','Apr'],data:[18,20,22,24,21,22],color:'#818cf8',label:'Vitamin D ng/mL',min:10,max:40},
+  };
+  const d = labData[tab];
+  mkChart('labTrend', {
+    type:'line',
+    data:{labels:d.labels,datasets:[{label:d.label,data:d.data,borderColor:d.color,backgroundColor:d.color+'18',tension:.4,fill:true,pointRadius:4,pointBackgroundColor:d.color,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,...CD,scales:{x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(148,163,184,.06)'}},y:{min:d.min,max:d.max,ticks:{color:'#64748b',font:{size:10}},grid:{color:'rgba(148,163,184,.06)'}}}}
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  MEDICAL REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshMedical() {
+  try {
+    const symptoms = await get('/api/symptoms');
+    const listEl = document.getElementById('symptomLog');
+    if (listEl) {
+      if (!symptoms.length) { listEl.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px 0">No symptoms logged yet.</div>'; return; }
+      const sevColors = ['','#34d399','#fbbf24','#fb923c','#f87171','#ef4444'];
+      listEl.innerHTML = symptoms.slice(0,6).map(s => {
+        const dots = Array.from({length:5},(_,i)=>`<div class="sev-dot s${i+1}${i<s.severity?' active':''}"></div>`).join('');
+        return `<div class="symptom-item"><div><div style="font-size:13px;font-weight:600">${s.type}</div><div style="font-size:11px;color:var(--muted)">${s.date} · ${s.duration}</div></div><div style="display:flex;gap:4px">${dots}</div></div>`;
+      }).join('');
+    }
+
+    // BP chart (static sample for now)
+    const sys = [128,132,136,130,134,138,131,142,138,135,140,138,136,138];
+    const dia = [82,84,86,80,85,88,82,90,87,84,89,88,85,88];
+    mkChart('bpChart', {
+      type:'line',
+      data:{labels:Array.from({length:14},(_,i)=>{const d=new Date();d.setDate(d.getDate()-13+i);return d.toLocaleDateString('en',{day:'numeric',month:'short'});}),datasets:[{label:'Systolic',data:sys,borderColor:'#f87171',tension:.4,fill:false,pointRadius:3,borderWidth:2},{label:'Diastolic',data:dia,borderColor:'#fbbf24',tension:.4,fill:false,pointRadius:3,borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,...CD}
+    });
+  } catch(e) { console.error('Medical error', e); }
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROFILE REFRESH
+// ═══════════════════════════════════════════════════════
+async function refreshProfile() {
+  try {
+    const habits = await get('/api/habits');
+    state.habits = habits;
+    renderHabits();
+
+    const p = await get('/api/profile');
+    state.profile = p;
+    if (p) {
+      const set = (id,v) => { const e=document.getElementById(id); if(e) e.value=v; };
+      set('pFName', p.firstName||'');
+      set('pLName', p.lastName||'');
+      set('pAge',   p.age||'');
+      set('pHeight',p.height||'');
+      set('pWeight',p.weight||'');
+      set('pAllergies',p.allergies||'');
+      if (p.gender) { const s=document.getElementById('pGender'); if(s) s.value=p.gender; }
+      if (p.activity) { const s=document.getElementById('pActivity'); if(s) s.value=p.activity; }
+      if (p.diet) { const s=document.getElementById('pDiet'); if(s) s.value=p.diet; }
+      const name = document.getElementById('profileName');
+      if (name) name.textContent = (p.firstName||'') + ' ' + (p.lastName||'');
+      computeBMR(p);
+    }
+  } catch(e) { console.error('Profile error', e); }
+}
+
+function computeBMR(p) {
+  const age    = parseInt(p?.age) || parseInt(document.getElementById('pAge')?.value) || 34;
+  const height = parseInt(p?.height) || parseInt(document.getElementById('pHeight')?.value) || 174;
+  const weight = parseFloat(p?.weight) || parseFloat(document.getElementById('pWeight')?.value) || 72.6;
+  const gender = p?.gender || 'Male';
+  let bmr = gender==='Male'
+    ? 10*weight + 6.25*height - 5*age + 5
+    : 10*weight + 6.25*height - 5*age - 161;
+  const actMap = {'Sedentary':1.2,'Lightly':1.375,'Moderately':1.55,'Very':1.725,'Extremely':1.9};
+  const actText = p?.activity || '';
+  let factor = 1.375;
+  for (const k in actMap) { if (actText.includes(k)) { factor = actMap[k]; break; } }
+  const tdee = Math.round(bmr * factor);
+  bmr = Math.round(bmr);
+  const b = document.getElementById('bmrVal');  if(b) b.textContent = bmr.toLocaleString() + ' kcal';
+  const t = document.getElementById('tdeeVal'); if(t) t.textContent = tdee.toLocaleString() + ' kcal';
+  const pt = document.getElementById('proTarget'); if(pt) pt.textContent = Math.round(weight * 1.8) + 'g';
+}
+
+// ═══════════════════════════════════════════════════════
+//  SAVE FUNCTIONS
+// ═══════════════════════════════════════════════════════
+async function saveMeal() {
+  const body = {
+    type:    document.getElementById('mealType').value,
+    items:   document.getElementById('mealItems').value,
+    cal:     parseInt(document.getElementById('mealCal').value)||0,
+    time:    document.getElementById('mealTime').value,
+    protein: parseInt(document.getElementById('mealPro').value)||0,
+    carbs:   parseInt(document.getElementById('mealCarb').value)||0,
+    fat:     parseInt(document.getElementById('mealFat').value)||0,
+    notes:   document.getElementById('mealNotes').value,
+  };
+  if (!body.items) { toast('Please enter food items'); return; }
+  try {
+    await post('/api/meals', body);
+    closeModal('mealModal');
+    toast('✓ Meal saved to MongoDB: ' + body.items.substring(0,30));
+  } catch(e) { toast('Error saving meal'); }
+}
+
+async function saveMed() {
+  const body = {
+    name:      document.getElementById('medName').value,
+    dosage:    document.getElementById('medDosage').value,
+    timing:    document.getElementById('medTiming').value,
+    frequency: document.getElementById('medFreq').value,
+    food:      document.getElementById('medFood').value,
+    notes:     document.getElementById('medNotes').value,
+  };
+  if (!body.name) { toast('Please enter a medicine name'); return; }
+  try {
+    const med = await post('/api/medicines', body);
+    state.meds.push({ ...med, done: false });
+    renderMeds();
+    closeModal('medModal');
+    toast('✓ Medicine saved to MongoDB: ' + body.name);
+  } catch(e) { toast('Error saving medicine'); }
+}
+
+async function saveWeight() {
+  const body = {
+    weight: parseFloat(document.getElementById('weightVal').value),
+    bf:     parseFloat(document.getElementById('bfVal').value)||null,
+    waist:  parseFloat(document.getElementById('waistVal').value)||null,
+    time:   document.getElementById('weightTime').value,
+  };
+  if (!body.weight) { toast('Please enter weight'); return; }
+  try {
+    await post('/api/weight', body);
+    closeModal('weightModal');
+    toast('✓ Weight saved to MongoDB: ' + body.weight + ' kg');
+    refreshDashboard();
+  } catch(e) { toast('Error saving weight'); }
+}
+
+async function saveSleep() {
+  const body = {
+    start:   document.getElementById('sleepStart').value,
+    end:     document.getElementById('sleepEnd').value,
+    quality: parseInt(document.getElementById('sleepQuality').value),
+    notes:   document.getElementById('sleepNotes').value,
+  };
+  try {
+    await post('/api/sleep', body);
+    closeModal('sleepModal');
+    toast('✓ Sleep logged to MongoDB');
+  } catch(e) { toast('Error saving sleep'); }
+}
+
+async function saveWorkout() {
+  const body = {
+    type:      document.getElementById('wkType').value,
+    duration:  parseInt(document.getElementById('wkDur').value)||0,
+    intensity: document.getElementById('wkInt').value,
+    calories:  parseInt(document.getElementById('wkCal').value)||0,
+    steps:     parseInt(document.getElementById('wkSteps').value)||0,
+  };
+  try {
+    await post('/api/workouts', body);
+    closeModal('workoutModal');
+    toast('✓ Workout saved to MongoDB: ' + body.type.replace(/[^\w\s]/g,'').trim());
+    refreshFitness();
+  } catch(e) { toast('Error saving workout'); }
+}
+
+async function saveSymptom() {
+  const body = {
+    type:     document.getElementById('symType').value,
+    severity: parseInt(document.getElementById('symSev').value),
+    duration: document.getElementById('symDur').value,
+    notes:    document.getElementById('symNotes').value,
+  };
+  try {
+    await post('/api/symptoms', body);
+    closeModal('symptomModal');
+    toast('✓ Symptom logged to MongoDB');
+  } catch(e) { toast('Error saving symptom'); }
+}
+
+async function saveProfile() {
+  const body = {
+    firstName: document.getElementById('pFName').value,
+    lastName:  document.getElementById('pLName').value,
+    age:       parseInt(document.getElementById('pAge').value),
+    gender:    document.getElementById('pGender').value,
+    height:    parseFloat(document.getElementById('pHeight').value),
+    weight:    parseFloat(document.getElementById('pWeight').value),
+    activity:  document.getElementById('pActivity').value,
+    diet:      document.getElementById('pDiet').value,
+    allergies: document.getElementById('pAllergies').value,
+  };
+  try {
+    await put('/api/profile', body);
+    const name = document.getElementById('profileName'); if(name) name.textContent = body.firstName + ' ' + body.lastName;
+    computeBMR(body);
+    toast('✓ Profile saved to MongoDB');
+  } catch(e) { toast('Error saving profile'); }
+}
+
+function selectGoal(g) {
+  ['fat','muscle','maint'].forEach(x => {
+    const btn = document.getElementById('goal'+x.charAt(0).toUpperCase()+x.slice(1));
+    if (btn) btn.className = x===g ? 'btn btn-primary' : 'btn';
+  });
+}
+
+function saveApiKey() {
+  const k = document.getElementById('apiKeyInput')?.value;
+  if (k) { localStorage.setItem('hos_claude_key', k); toast('✓ API key saved locally'); }
+}
+
+async function exportData() {
+  try {
+    const [profile,meals,weight,sleep,workouts,medicines,symptoms,habits] = await Promise.all([
+      get('/api/profile'),get('/api/meals'),get('/api/weight'),get('/api/sleep'),
+      get('/api/workouts'),get('/api/medicines'),get('/api/symptoms'),get('/api/habits'),
+    ]);
+    const data = { exportDate:new Date().toISOString(), profile, meals, weight, sleep, workouts, medicines, symptoms, habits };
+    const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download='healthos-mongodb-export.json'; a.click();
+    URL.revokeObjectURL(url);
+    toast('✓ Data exported from MongoDB');
+  } catch(e) { toast('Error exporting data'); }
+}
+
+function openAddLabModal() { toast('Lab entry form coming in next update!'); }
+
+// ═══════════════════════════════════════════════════════
+//  AI CHAT
+// ═══════════════════════════════════════════════════════
+function appendChat(role, text) {
+  const msgs = document.getElementById('chatMessages'); if (!msgs) return;
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (role==='user'?'user':'');
+  div.innerHTML = `<div class="chat-avatar ${role==='user'?'user-avatar':'ai-avatar'}">${role==='user'?'👤':'🤖'}</div><div class="chat-bubble ${role==='user'?'user-bubble':'ai-bubble'}">${text}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const q = input?.value?.trim(); if(!q) return;
+  input.value = '';
+  appendChat('user', q);
+  appendChat('ai', '<em style="color:var(--muted)">Thinking…</em>');
+  // Save to MongoDB
+  post('/api/ai-chats', {role:'user', content:q}).catch(()=>{});
+
+  const key = localStorage.getItem('hos_claude_key');
+  if (!key) { document.querySelector('#chatMessages .chat-msg:last-child .chat-bubble').innerHTML = '⚠️ Please add your Claude API key in the panel on the right to enable AI responses.'; return; }
+
+  const dash = state.dashboard;
+  const context = `You are a personal AI health coach. User health data from MongoDB:
+- Active conditions: Type 2 Diabetes (HbA1c 6.8%), Hypertension (BP 138/88), Hypothyroidism (controlled)
+- Medications: Metformin 500mg, Levothyroxine 50mcg, Amlodipine 5mg
+- Today: ${dash?`${dash.calories.consumed} kcal consumed, ${dash.steps.today} steps, ${dash.sleep?dash.sleep.hours+'h sleep':'no sleep logged'}, ${dash.water.cups*0.25}L water`:'data loading'}
+- Labs: HbA1c 6.8% (HIGH), LDL 128 (HIGH), Vitamin D 22 (LOW)
+Provide evidence-based, personalised advice in 3–5 sentences. Always recommend consulting a doctor for medical decisions.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:600,system:context,messages:[{role:'user',content:q}]})
+    });
+    const data = await res.json();
+    const reply = data?.content?.[0]?.text || 'Sorry, could not generate a response.';
+    document.querySelector('#chatMessages .chat-msg:last-child .chat-bubble').innerHTML = reply.replace(/\n/g,'<br>');
+    post('/api/ai-chats', {role:'assistant', content:reply}).catch(()=>{});
+  } catch(e) {
+    document.querySelector('#chatMessages .chat-msg:last-child .chat-bubble').innerHTML = 'Error connecting to Claude. Check your API key.';
+  }
+}
+function quickChat(msg) { const inp=document.getElementById('chatInput'); if(inp){ inp.value=msg; sendChat(); } }
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+async function init() {
+  initDate();
+  const lt = document.getElementById('loaderText');
+
+  try {
+    if(lt) lt.textContent = 'Pinging MongoDB…';
+    await get('/api/profile');
+    setDbStatus(true);
+    if(lt) lt.textContent = 'Loading health data…';
+
+    // Load habits into state
+    const habits = await get('/api/habits');
+    state.habits = habits;
+
+    if(lt) lt.textContent = 'Fetching dashboard…';
+    await refreshDashboard();
+    renderHabits();
+
+    // Restore API key
+    const k = localStorage.getItem('hos_claude_key');
+    if(k) { const el=document.getElementById('apiKeyInput'); if(el) el.value=k; }
+
+  } catch(e) {
+    setDbStatus(false);
+    if(lt) lt.textContent = 'Server offline — check connection';
+    console.error('Init error:', e);
+  } finally {
+    setTimeout(() => {
+      const loader = document.getElementById('loader');
+      if(loader) { loader.classList.add('gone'); setTimeout(()=>loader.remove(),500); }
+    }, 800);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
